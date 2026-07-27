@@ -1,0 +1,260 @@
+base.html (Master Template) 
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+<meta charset="UTF-8"> 
+<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+<title>{% block title %}Food Waste Redistribution App{% endblock %}</title> 
+<link 
+href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=DM+Sans:w
+ght@300;400;500;600&display=swap" rel="stylesheet"> 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+rel="stylesheet"> 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" 
+rel="stylesheet"> 
+<style> 
+:root { --green: #2D6A4F; --green-light: #40916C; --green-pale: #D8F3DC; --orange: #F4845F; --cream: #FEFAE0; --dark: #1B1B1B; --muted: #6B7280; --border: #E5E7EB; 
+} 
+body { font-family: 'DM Sans', sans-serif; background: #F7F9F5; color: var(--dark); } 
+h1,h2,h3,h4 { font-family: 'Fraunces', serif; } 
+ 
+ 
+ 
+  
+/* NAVBAR */ 
+        .navbar { background:#fff; border-bottom:1px solid var(--border); padding:0.75rem 0; 
+position:sticky; top:0; z-index:1000; box-shadow:0 1px 12px rgba (0,0,0,0.06); } 
+        . navbar-brand {font-family:'Fraunces',serif; font-weight:900; font-size:1.5rem; color:var(-
+green)! important;} 
+        .nav-link { font-weight:500; color:var(--muted)!important; padding:0.4rem 0.9rem!important; 
+border-radius:8px; transition: all 0.2s; } 
+        .nav-link:hover,.nav-link.active { color:var(--green)!important; background:var(--green-pale); } 
+        .btn-nav-cta{background:var(--green);color:white!important;border-radius:50px; 
+padding:0.4rem 1.2rem!important; font-weight:600; } 
+ 
+/* BUTTONS */ 
+        .btn-primary { background:var(--green); border:none; border-radius:50px; padding:0.55rem 
+1.6rem; font-weight:600; transition:all 0.25s; } 
+        .btn-primary:hover { background:var(--green-light); transform:translateY(-2px); box-shadow:0 
+6px 16px rgba(45,106,79,0.3); } 
+        .btn-outline-primary { border:2px solid var(--green); color:var(--green); border-radius:50px; 
+padding:0.5rem 1.5rem; font-weight:600; background:transparent; } 
+        .btn-outline-primary:hover { background:var(--green); color:white; } 
+      
+/* CARDS */ 
+        .card { border:1px solid var(--border); border-radius:16px; box-shadow:0 2px 8px 
+rgba(0,0,0,0.05); overflow:hidden; transition:transform 0.25s,box-shadow 0.25s; background:white; } 
+        .card:hover { transform:translateY(-4px); box-shadow:0 12px 28px rgba(0,0,0,0.1); } 
+        .food-card-img { height:180px; object-fit:cover; width:100%; } 
+        .food-card-img-placeholder { height:180px; background:linear-gradient(135deg,var(--green
+pale),#B7E4C7); display:flex; align-items:center; justify-content:center; font-size:3rem; } 
+ 
+   /* BADGES */ 
+        .badge-status { border-radius:50px; font-size:0.72rem; font-weight:600; padding:0.3rem 0.8rem; 
+text-transform:uppercase; letter-spacing:0.04em; } 
+        .badge-available { background:var(--green-pale); color:var(--green); } 
+        .badge-claimed   { background:#FEF3C7; color:#92400E; } 
+        .badge-expired   { background:#FEE2E2; color:#991B1B; } 
+        .badge-completed { background:#EDE9FE; color:#5B21B6; } 
+  
+        .badge-pending   { background:#FEF3C7; color:#92400E; } 
+        .badge-approved  { background:var(--green-pale); color:var(--green); } 
+        .badge-rejected  { background:#FEE2E2; color:#991B1B; } 
+        .badge-cancelled { background:#F3F4F6; color:#6B7280; } 
+        .veg-tag { background:var(--green-pale); color:var(--green); border-radius:50px; font
+size:0.7rem; font-weight:700; padding:2px 10px; border:1px solid #95D5B2; } 
+        .nonveg-tag { background:#FEE2E2; color:#991B1B; border-radius:50px; font-size:0.7rem; 
+font-weight:700; padding:2px 10px; } 
+ 
+ /* FORMS */ 
+        .form-control,.form-select { border:1.5px solid var(--border); border-radius:10px; 
+padding:0.6rem 0.9rem; font-size:0.95rem; transition:border-color 0.2s,box-shadow 0.2s; } 
+        .form-control:focus,.form-select:focus { border-color:var(--green); box-shadow:0 0 0 3px 
+rgba(45,106,79,0.15); outline:none; } 
+        .form-label { font-weight:600; font-size:0.88rem; margin-bottom:0.35rem; } 
+        .form-card { background:white; border-radius:20px; padding:2.5rem; box-shadow:0 4px 24px 
+rgba(0,0,0,0.07); border:1px solid var(--border); } 
+ 
+  /* ALERTS */ 
+        .alert { border-radius:12px; border:none; font-weight:500; } 
+        .alert-success { background:var(--green-pale); color:var(--green); } 
+        .alert-warning { background:#FEF3C7; color:#92400E; } 
+        .alert-danger   { background:#FEE2E2; color:#991B1B; } 
+ 
+/* STATS */ 
+        .stat-card { background:white; border-radius:16px; padding:1.5rem; border:1px solid var(-
+border); text-align:center; } 
+        .stat-icon { width:52px; height:52px; border-radius:14px; display:flex; align-items:center; 
+justify-content:center; font-size:1.4rem; margin:0 auto 0.75rem; } 
+        .stat-number { font-family:'Fraunces',serif; font-size:2rem; font-weight:900; line-height:1; } 
+        .stat-label { font-size:0.82rem; color:var(--muted); font-weight:500; margin-top:0.25rem; } 
+ 
+ 
+ 
+  
+  
+/* MISC */ 
+        .section-tag { display:inline-block; background:var(--green-pale); color:var(--green); border
+radius:50px; font-size:0.8rem; font-weight:700; padding:0.3rem 1rem; text-transform:uppercase; 
+letter-spacing:0.08em; margin-bottom:0.75rem; } 
+        .page-header { background:linear-gradient(135deg,#2D6A4F 0%,#40916C 100%); color:white; 
+padding:3rem 0 2.5rem; margin-bottom:2.5rem; } 
+        .page-header h1 { color:white; font-size:2rem; } 
+        .trust-score { display:inline-flex; align-items:center; gap:4px; background:#FFFBEB; border:1px 
+solid #FCD34D; border-radius:50px; padding:2px 10px; font-size:0.82rem; font-weight:700; 
+color:#92400E; } 
+        .empty-state { text-align:center; padding:4rem 2rem; color:var(--muted); } 
+        .empty-state .empty-icon { font-size:3.5rem; margin-bottom:1rem; opacity:0.5; } 
+        .sidebar-menu-item { display:flex; align-items:center; gap:10px; padding:0.65rem 0.9rem; 
+border-radius:10px; color:var(--muted); text-decoration:none; font-weight:500; transition:all 0.2s; 
+margin-bottom:2px; } 
+        .sidebar-menu-item:hover,.side bar-menu-item. Active { background:var(--green-pale); 
+color:var(--green); } 
+        .table th { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; 
+color:var(--muted); border-bottom:2px solid var(--border); padding:0.85rem 1rem; } 
+        .table td { padding:0.85rem 1rem; border-bottom:1px solid #F3F4F6; vertical-align:middle; } 
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} 
+to{opacity:1;transform:translateY(0)}} 
+        .fade-in { animation:fadeInUp 0.5s ease both; } 
+        .fade-in-1 { animation-delay:0.1s; } 
+        .fade-in-2 { animation-delay:0.2s; } 
+        .fade-in-3 { animation-delay:0.3s; } 
+ 
+/* FOOTER */ 
+        footer { background:var(--dark); color:#9CA3AF; padding:3rem 0 2rem; margin-top:5rem; } 
+        footer .footer-brand { font-family:'Fraunces',serif; font-size:1.4rem; color:white; font
+weight:900; } 
+        footer a { color:#9CA3AF; text-decoration:none; transition:color 0.2s; } 
+        footer a:hover { color:white; } 
+    </style> 
+  
+    {% block extra_css %}{% endblock %} 
+</head> 
+<body> 
+ 
+<!-- NAVBAR --> 
+<nav class="navbar navbar-expand-lg"> 
+    <div class="container"> 
+        <a class="navbar-brand" href="{% url 'home' %}"> Food Waste Redistribution App</a> 
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs
+target="#navMenu"> 
+            <span class="navbar-toggler-icon"></span> 
+        </button> 
+        <div class="collapse navbar-collapse" id="navMenu"> 
+            <ul class="navbar-nav ms-auto align-items-lg-center gap-1"> 
+                <li class="nav-item"> 
+                    <a class="nav-link" href="{% url 'listing_list' %}"> 
+                        <i class="bi bi-grid me-1"></i>Browse Food 
+                    </a> 
+                </li> 
+                {% if user.is_authenticated %} 
+                <li class="nav-item"> 
+                    <a class="nav-link" href="{% url 'dashboard' %}"> 
+                        <i class="bi bi-speedometer2 me-1"></i>Dashboard 
+                    </a> 
+                </li> 
+                {% if user.role == 'donor' %} 
+                <li class="nav-item"> 
+                    <a class="nav-link" href="{% url 'listing_create' %}"> 
+                        <i class="bi bi-plus-circle me-1"></i>Donate Food 
+                    </a> 
+                </li> 
+                {% endif %} 
+  
+                <li class="nav-item"> 
+                    <a class="nav-link" href="{% url 'notifications' %}"> 
+                        <i class="bi bi-bell"></i> 
+                    </a> 
+                </li> 
+                <li class="nav-item dropdown"> 
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"> 
+                        {{ user.first_name|default:user.username }} 
+                    </a> 
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border
+radius:14px;"> 
+                        <li><a class="dropdown-item py-2" href="{% url 'profile' %}"><i class="bi bi-person 
+me-2"></i>Profile</a></li> 
+                        {% if user.role == 'receiver' %} 
+                        <li><a class="dropdown-item py-2" href="{% url 'my_claims' %}"><i class="bi bi
+bag-check me-2"></i>My Claims</a></li> 
+                        {% endif %} 
+                        {% if user.role == 'donor' %} 
+                        <li><a class="dropdown-item py-2" href="{% url 'donor_claims' %}"><i class="bi bi
+inbox me-2"></i>Incoming Claims</a></li> 
+                        {% endif %} 
+                        <li><hr class="dropdown-divider"></li> 
+                        <li><a class="dropdown-item py-2 text-danger" href="{% url 'logout' %}"><i 
+class="bi bi-box-arrow-right me-2"></i>Logout</a></li> 
+                    </ul> 
+                </li> 
+                {% else %} 
+                <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li> 
+                <li class="nav-item"><a class="nav-link btn-nav-cta" href="{% url 'register' %}">Get 
+Started</a></li> 
+                {% endif %} 
+            </ul> 
+        </div> 
+  
+    </div> 
+</nav> 
+ 
+<!-- MESSAGES --> 
+{% if messages %} 
+<div class="container mt-3"> 
+    {% for msg in messages %} 
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert"> 
+        {{ msg }} 
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button> 
+    </div> 
+    {% endfor %} 
+</div> 
+{% endif %} 
+ 
+<main>{% block content %}{% endblock %}</main> 
+ 
+<!-- FOOTER --> 
+<footer> 
+    <div class="container"> 
+        <div class="row g-4"> 
+            <div class="col-md-4"> 
+                <div class="footer-brand mb-2"> Food Waste Redistribution App</div> 
+                <p style="font-size:0.9rem;line-height:1.7;">Connecting food donors with those in need. 
+Every meal shared is a step towards zero waste.</p> 
+            </div> 
+            <div class="col-md-4"> 
+                <div style="color:white;font-weight:700;margin-bottom:1rem;">Navigate</div> 
+                <div class="d-flex flex-column gap-2" style="font-size:0.9rem;"> 
+                    <a href="{% url 'home' %}">Home</a> 
+                    <a href="{% url 'listing_list' %}">Browse Food</a> 
+                    {% if user.is_authenticated %} 
+  
+                    <a href="{% url 'dashboard' %}">Dashboard</a> 
+                    {% else %} 
+                    <a href="{% url 'register' %}">Sign Up</a> 
+                    {% endif %} 
+                </div> 
+            </div> 
+            <div class="col-md-4"> 
+                <div style="color:white;font-weight:700;margin-bottom:1rem;">About</div> 
+                <p style="font-size:0.9rem;">Final Year Project — Food Waste Redistribution System 
+using Django + Python.</p> 
+            </div> 
+        </div> 
+        <hr style="border-color:#374151;margin-top:2rem;"> 
+        <div style="text-align:center;font-size:0.85rem;">© 2024 Food Waste Redistribution App. Built 
+with  to fight food waste.</div> 
+    </div> 
+</footer> 
+ 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> 
+{% block extra_js %}{% endblock %} 
+</body> 
+</html> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
