@@ -1,0 +1,617 @@
+users/models.py 
+from Django.contrib.auth.models import AbstractUser 
+from Django. dB import models 
+ 
+class Custom User (AbstractUser): 
+    ROLE_CHOICES = [ 
+        ('donor', 'Donor'), 
+        ('receiver', 'Receiver'), 
+        ('admin', 'Admin'), 
+    ] 
+    role  = models.CharField(max_length=10, choices=ROLE_CHOICES, default='donor') 
+    phone = models.CharField(max_length=15, blank=True) 
+    address  = models.TextField(blank=True) 
+    profile_photo= models.ImageField(upload_to='profiles/', blank=True, null=True) 
+    trust_score  = models. Float Field(default=5.0) 
+    bio  = models.TextField(blank=True) 
+    is_verified  = models.BooleanField(default=False) 
+    created_at   = models.DateTimeField(auto_now_add=True) 
+     
+def __str__(self): 
+        return f" {self.username} ({self.role})" 
+ 
+    def is_donor(self): 
+        return self.role == 'donor' 
+ 
+    def is_receiver(self): 
+        return self.role == 'receiver' 
+ 
+  
+ 
+users/forms.py 
+from Django import forms 
+from Django.contrib.auth.forms import UserCreationForm, AuthenticationForm 
+from .models import CustomUser 
+ 
+class Register Form(UserCreationForm): 
+    email  = forms.EmailField(required=True) 
+    role   = forms. Choice Field(choices=[ 
+        ('donor',    'Donor - I want to donate food'), 
+        ('receiver', 'Receiver - I want to receive food') 
+    ]) 
+    phone   = forms. Char Field(max_length=15, required=False) 
+    address = forms.Char Field(widget=forms.Text area(attrs={'rows':2}), required=False) 
+ 
+    class Meta: 
+        model  = CustomUser 
+        fields = ['username','email','first_name','last_name', 
+                  'role','phone','address','password1','password2'] 
+ 
+class Login Form(AuthenticationForm): 
+    username = forms.CharField(widget=forms.TextInput(attrs={'placeholder':'Username'})) 
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder':'Password'})) 
+ 
+class Profile Update Form(forms.ModelForm): 
+    class Meta: 
+        model  = CustomUser 
+        fields = ['first_name','last_name','email','phone','address','bio','profile_photo'] 
+        widgets = { 
+            'bio':     forms.Textarea(attrs={'rows':3}), 
+            'address': forms.Textarea(attrs={'rows':2}), 
+  
+        } 
+users/views.py 
+from Django. Shortcuts import render, redirect 
+from Django.contrib.auth import login, logout 
+from Django.contrib.auth.decorators import login_required 
+from Django.contrib import messages 
+from .forms import RegisterForm, LoginForm, Profile Update Form 
+from .models import CustomUser 
+from listings. Models import Food Listing 
+from claims. Models import Claim 
+ 
+def register view(request): 
+    if request. Method == 'POST': 
+        form = RegisterForm(request. POST) 
+        if form.is_valid(): 
+            user = form.save() 
+            login(request, user) 
+            messages.success(request, f 'Welcome {user.first_name or user.username}!') 
+            return redirect('dashboard') 
+    else: 
+        form = RegisterForm() 
+    return render(request, 'users/register.html', {'form': form}) 
+ 
+def login_view(request): 
+    if request.user.is_authenticated: 
+        return redirect('dashboard') 
+    if request.method == 'POST': 
+        form = LoginForm(request, data=request.POST) 
+        if form.is_valid(): 
+            user = form.get_user() 
+            login (request, user) 
+  
+            messages.success(request, f' Welcome back, {user.first_name or user.username}!') 
+            return redirect('dashboard') 
+        else: 
+            messages.error(request, 'Invalid username or password.') 
+    else: 
+        form = LoginForm() 
+    return render(request, 'users/login.html', {'form': form}) 
+ 
+def logout_view(request): 
+    logout(request) 
+    messages.info(request, 'You have been logged out.') 
+    return redirect('home') 
+ 
+@login_required 
+def profile_view(request): 
+    if request.method == 'POST': 
+        form = Profile Update Form(request.POST, request.FILES, instance=request.user) 
+        if form.is_valid(): 
+            form.save() 
+            messages.success(request, 'Profile updated successfully!') 
+            return redirect('profile') 
+    else: 
+        form = ProfileUpdateForm(instance=request.user) 
+    return render(request, 'users/profile.html', {'form': form}) 
+ 
+@login_required 
+def dashboard_view(request): 
+    user    = request.user 
+    context = {} 
+    if user.is_donor(): 
+        listings = FoodListing.objects.filter(donor=user).order_by('-created_at') 
+  
+        context.update({ 
+            'listings':        listings, 
+            'total_listings':  listings.count(), 
+            'active_listings': listings.filter(status='available').count(), 
+            'claimed_listings':listings.filter(status='claimed').count(), 
+        }) 
+    elif user.is_receiver(): 
+        claims = Claim.objects.filter(receiver=user).order_by('-created_at') 
+        context.update({ 
+            'claims':          claims, 
+            'total_claims':    claims.count(), 
+            'approved_claims': claims.filter(status='approved').count(), 
+            'pending_claims':  claims.filter(status='pending').count(), 
+        }) 
+    elif user.role == 'admin' or user.is_staff: 
+        context.update({ 
+            'total_users':    Custom User. objects. Count(), 
+            'total_listings': Food Listing .objects. Count(), 
+            'total_claims':   Claim.objects.count(), 
+            'recent_listings':FoodListing.objects.order_by('-created_at')[:5], 
+        }) 
+    return render(request, 'dashboard/dashboard.html', context) 
+ 
+users/urls.py 
+         from Django. URLs import path 
+          from . import views 
+            URL patterns = [ 
+    path('register/', views .register_view, name='register'), 
+    path('login/',    views. Login_view,    name='login'), 
+    path('logout/',   views. Logout_view,   name='logout'), 
+    path('profile/',  views. Profile_view,  name='profile'), 
+  
+] 
+ 
+listings/models.py 
+from Django. dB import models 
+from Django.utils import time zone 
+from users. Models import CustomUser 
+ 
+class Category(models. Model): 
+    name = models.CharField(max_length=100) 
+    icon = models.CharField(max_length=50, default='') 
+ 
+    def __str__(self): 
+        return self.name 
+ 
+    class Meta: 
+        verbose_name_plural = 'Categories' 
+ 
+class Food Listing(models.Model): 
+    STATUS_CHOICES  = [ 
+        ('available', 'Available'), 
+        ('claimed',   'Claimed'), 
+        ('expired',   'Expired'), 
+        ('completed', 'Completed'), 
+    ] 
+    SERVING_CHOICES = [ 
+        ('1-5',  '1–5 people'), 
+        ('5-15', '5–15 people'), 
+        ('15-30','15–30 people'), 
+        ('30+',  '30+ people'), 
+    ] 
+  
+    donor          = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related 
+name='listings') 
+    title          = models.CharField(max_length=200) 
+    description    = models.TextField() 
+    category       = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True) 
+    quantity       = models.CharField(max_length=100) 
+    serves         = models.CharField(max_length=10, choices=SERVING_CHOICES, default='1-5') 
+    photo          = models.ImageField(upload_to='food_photos/', blank=True, null=True) 
+    pickup_address = models.TextField() 
+    status         = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available') 
+    expiry_time    = models.DateTimeField() 
+    is_veg         = models.BooleanField(default=True) 
+    created_at     = models.DateTimeField(auto_now_add=True) 
+    updated_at     = models.DateTimeField(auto_now=True) 
+ 
+    def __str__(self): 
+        return self.title 
+ 
+    def is_expired(self): 
+        return timezone.now() > self.expiry_time 
+ 
+    class Meta: 
+        ordering = ['-created_at']' 
+ 
+listings/views.py 
+from Django. Shortcuts import render, redirect, get_object_or_404 
+from Django.contrib.auth.decorators import login_required 
+from Django.contrib import messages 
+from Django.utils import time zone 
+from .models import FoodListing, Category 
+from .forms import Food Listing Form 
+from notifications.utils import create_notification 
+  
+ 
+def home_view(request): 
+    listings      = FoodListing.objects.filter( 
+                        status='available', 
+                        expiry_time__gt=timezone.now() 
+                    ).order_by('-created_at')[:6] 
+    categories    = Category.objects.all() 
+    total_listings= FoodListing.objects.count() 
+    total_saved   = FoodListing.objects.filter(status='completed').count() 
+    return render(request, 'listings/home.html', { 
+        'listings':       listings, 
+        'categories':     categories, 
+        'total_listings': total_listings, 
+        'total_saved':    total_saved, 
+    }) 
+ 
+def listing_list(request): 
+    listings   = FoodListing.objects.filter( 
+                    status='available', 
+                    expiry_time__gt=timezone.now() 
+                 ) 
+    category_id= request.GET.get('category') 
+    veg_filter = request.GET.get('veg') 
+    search     = request.GET.get('search', '') 
+ 
+    if category_id: 
+        listings = listings.filter(category_id=category_id) 
+    if veg_filter == 'true': 
+        listings = listings.filter(is_veg=True) 
+    if search: 
+        listings = listings.filter(title__icontains=search) 
+  
+ 
+    return render(request, 'listings/list.html', { 
+        'listings': listings, 
+        'categories': Category.objects.all(), 
+        'selected_category': category_id, 
+        'search': search, 
+    }) 
+ 
+def listing_detail(request, pk): 
+    listing = get_object_or_404(FoodListing, pk=pk) 
+    return render(request, 'listings/detail.html', {'listing': listing}) 
+ 
+@login_required 
+def listing_create(request): 
+    if not request.user.is_donor(): 
+        messages.error(request, 'Only donors can create listings.') 
+        return redirect('listing_list') 
+    if request.method == 'POST': 
+        form = FoodListingForm(request.POST, request.FILES) 
+        if form.is_valid(): 
+            listing        = form.save(commit=False) 
+            listing.donor  = request.user 
+            listing.save() 
+            messages.success(request, 'Food listing created successfully!') 
+            return redirect('listing_detail', pk=listing.pk) 
+    else: 
+        form = Food Listing Form() 
+    return render(request, 'listings/form.html', {'form': form, 'title': 'Donate Food'}) 
+ 
+@login_required 
+def listing_edit(request, pk): 
+  
+    listing = get_object_or_404(FoodListing, pk=pk, donor=request.user) 
+    if request.method == 'POST': 
+        form = FoodListingForm(request.POST, request.FILES, instance=listing) 
+        if form.is_valid(): 
+            form.save() 
+            messages.success(request, 'Listing updated successfully!') 
+            return redirect('listing_detail', pk=listing.pk) 
+    else: 
+        form = FoodListingForm(instance=listing) 
+    return render(request, 'listings/form.html', { 
+        'form': form, 'title': 'Edit Listing', 'listing': listing 
+    }) 
+ 
+@login_required 
+def listing_delete(request, pk): 
+    listing = get_object_or_404(FoodListing, pk=pk, donor=request.user) 
+    if request.method == 'POST': 
+        listing.delete() 
+        messages.success(request, 'Listing deleted.') 
+        return redirect('dashboard') 
+    return render(request, 'listings/confirm_delete.html', {'listing': listing}) 
+claims/models.py 
+from Django. dB import models 
+from users.models import CustomUser 
+from listings.models import FoodListing 
+ 
+class Claim(models.Model): 
+    STATUS_CHOICES = [ 
+        ('pending',   'Pending'), 
+        ('approved',  'Approved'), 
+        ('rejected',  'Rejected'), 
+  
+        ('completed', 'Completed'), 
+        ('cancelled', 'Cancelled'), 
+    ] 
+    listing     = models.ForeignKey(FoodListing, on_delete=models.CASCADE, 
+related_name='claims') 
+    receiver    = models.ForeignKey(CustomUser,  on_delete=models.CASCADE, 
+related_name='claims') 
+    status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending') 
+    message     = models.TextField(blank=True) 
+    pickup_time = models.DateTimeField(null=True, blank=True) 
+    created_at  = models.DateTimeField(auto_now_add=True) 
+    updated_at  = models.DateTimeField(auto_now=True) 
+ 
+    class Meta: 
+        ordering       = ['-created_at'] 
+        unique_together = ['listing', 'receiver'] 
+ 
+    def __str__(self): 
+        return f"{self.receiver.username} → {self.listing.title} [{self.status}]" 
+claims/views.py 
+from Django. Shortcuts import render, redirect, get_object_or_404 
+from django.contrib.auth.decorators import login_required 
+from django.contrib import messages 
+from .models import Claim 
+from .forms import Claim Form 
+from listings.models import FoodListing 
+from notifications.utils import create_notification 
+ 
+@login_required 
+def claim_create(request, listing_pk): 
+    listing = get_object_or_404(FoodListing, pk=listing_pk, status='available') 
+    if request.user.is_donor(): 
+  
+        messages.error(request, 'Donors cannot claim food.') 
+        return redirect('listing_detail', pk=listing_pk) 
+    if Claim.objects.filter(listing=listing, receiver=request.user).exists(): 
+        messages.warning(request, 'You have already claimed this listing.') 
+        return redirect('listing_detail', pk=listing_pk) 
+    if request.method == 'POST': 
+        form = ClaimForm(request.POST) 
+        if form.is_valid(): 
+            claim = form.save(commit=False) 
+            claim.listing  = listing 
+            claim.receiver = request.user 
+            claim.save() 
+            create_notification( 
+                listing.donor, 
+                {request.user.username} has claimed your listing: " {listing.title}"' 
+            ) 
+            messages.success(request, 'Claim submitted! The donor will review it shortly.') 
+            return redirect('my_claims') 
+    else: 
+        form = ClaimForm() 
+    return render(request, 'claims/claim_form.html', {'form': form, 'listing': listing}) 
+ 
+@login_required 
+def my_claims(request): 
+    claims = Claim.objects.filter(receiver=request.user).select_related('listing','listing__donor') 
+    return render(request, 'claims/my_claims.html', {'claims': claims}) 
+ 
+@login_required 
+def donor_claims(request): 
+    claims = Claim.objects.filter(listing__donor=request.user).select_related('listing','receiver') 
+    return render(request, 'claims/donor_claims.html', {'claims': claims}) 
+  
+ 
+@login_required 
+def claim_action(request, pk, action): 
+    claim = get_object_or_404(Claim, pk=pk, listing__donor=request.user) 
+    if action == 'approve' and claim.status == 'pending': 
+        claim.status  = 'approved' 
+        claim.listing.status = 'claimed' 
+        claim.listing.save() 
+        create_notification(claim.receiver) 
+            Your claim for "{claim.listing.title}" has been approved!') 
+        messages.success(request, 'Claim approved!') 
+    elif action == 'reject' and claim.status == 'pending': 
+        claim.status = 'rejected' 
+        create_notification(claim.receiver, 
+             Your claim for "{claim.listing.title}" was rejected.') 
+        messages.info(request, 'Claim rejected.') 
+    elif action == 'complete' and claim.status == 'approved': 
+        claim.status         = 'completed' 
+        claim.listing.status = 'completed' 
+        claim.listing.save() 
+        create_notification(claim.receiver) 
+            Food pickup for "{claim. listing.title}" marked as completed!') 
+        messages.success(request, 'Marked as completed!') 
+    claim.save() 
+    return redirect('donor_claims') 
+ 
+@login_required 
+def cancel_claim(request, pk): 
+    claim = get_object_or_404(Claim, pk=pk, receiver=request.user) 
+    if claim.status in ['pending', 'approved']: 
+        claim.status = 'cancelled' 
+  
+        if claim.listing.status == 'claimed': 
+            claim.listing.status = 'available' 
+            claim.listing.save() 
+        claim.save() 
+        messages.success(request, 'Claim cancelled.') 
+    return redirect('my_claims') 
+ 
+reviews/models.py 
+from Django. dB import models 
+from Django.core.validators import Min Value Validator, Max Value Validator 
+from users.models import CustomUser 
+from listings.models import FoodListing 
+ 
+class Review(models.Model): 
+    reviewer  = models.ForeignKey(CustomUser, on_delete=models.CASCADE, 
+related_name='reviews_given') 
+    reviewee  = models.ForeignKey(CustomUser, on_delete=models.CASCADE, 
+related_name='reviews_received') 
+    listing   = models.ForeignKey(FoodListing, on_delete=models.CASCADE, 
+related_name='reviews') 
+    rating    = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)]) 
+    comment   = models.TextField(blank=True) 
+    created_at= models.Date Time Field(auto_now_add=True) 
+class Meta: 
+        unique_together = ['reviewer', 'listing'] 
+        ordering        = ['-created at'] 
+def __str__(self): 
+        return f"{self. Reviewer} → {self. Reviewee} ({self. Rating})" 
+reviews/views. Pyfrom Django. Shortcuts import render, redirect, get_object_or_404 
+from django.contrib.auth.decorators import login required 
+from django.contrib import messages 
+from django.db.models import Avg 
+  
+from .models import Review 
+from .forms import ReviewForm 
+from listings. Models import Food Listing 
+@login_required 
+def add_review(request, listing_pk): 
+    listing = get_object_or_404(Food Listing, pk=listing_pk) 
+    if Review.objects.filter(reviewer=request. User, listing=listing).exists(): 
+        messages. Warning(request, 'You have already reviewed this listing.') 
+        return redirect('listing detail', pk=listing_pk) 
+    if request. User == listing. Donor: 
+        messages. Error(request, 'You cannot review your own listing.') 
+        return redirect('listing detail', pk=listing_pk) 
+    reviewee = listing. Donor 
+    if request. Method == 'POST': 
+        form = ReviewForm(request.POST) 
+        if form.is_valid(): 
+            review = form. Save(commit=False) 
+            review. Reviewer = request. User 
+            review. Reviewee = reviewee 
+            review. Listing  = listing 
+            review.save() 
+            avg = Review.objects.filter(reviewee=reviewee). aggregate(avg=Avg('rating'))['avg'] 
+            reviewee. Trust_ score = round (avg or 5.0, 1) 
+            reviewee. Save() 
+            messages. Success(request, 'Review submitted! ') 
+            return redirect('listing detail', pk=listing) 
+    else: 
+        form = Review Form() 
+    return render (request, 'reviews/review_form.html', {'form': form, 'listing': listing}) 
+ 
+ 
+  
+ 
+notifications/models.py 
+from Django. dB import models 
+from users. Models import Custom User 
+ 
+class Notification (models. Model): 
+    user       = models. Foreign Key (Custom User, on delete=models. CASCADE, related 
+name='notifications') 
+    message    = models. Text Field () 
+    is read    = models. Boolean Field(default=False) 
+    created at = models. Date Time Field(auto now_ add=Field ( 
+    class Meta: 
+        ordering = ['-created at'] 
+ 
+    def __str__(self): 
+        return f " To {self. user. Username: self. Message [:50]}" 
+ 
+notifications/utils.py 
+from. Models Import Notification 
+def create notification (user, message): 
+    Notification. Objects. create(user=user, message=message) 
+notifications/views.py 
+from Django. Shortcuts import render 
+from Django. contribute. decorators import login required 
+from. Models Import Notification 
+ 
+Login required 
+def notification list(request): 
+    notifications = Notification. objects. Filter (user=request. User) 
+    notifications. Filter (is read=False). update (is read=True) 
+    return render (request, 'notifications/list.html’, 'notifications': notifications) 
+  
+ 
+config/settings.py 
+from pathlib import Path 
+from decouple import config 
+BASE_DIR = Path(__file__). resolve (). parent. Parent 
+SECRET_KEY = config ('SECRET_KEY', default='Django-insecure-Food Waste Redistribution 
+App-key') 
+DEBUG      = config ('DEBUG', default=True, cast=bool) 
+ALLOWED_HOSTS = ['*'] 
+INSTALLED_APPS = [ 
+    'Django. centiradian', 
+    'Django. contribute', 
+    'Django. contrib. content types, 
+    'Django. contrib. sessions, 
+    'Django. contrib. messages', 
+    'Django. contrib. static files, 
+    'Rest framework', 
+    'Rest_ framework_ simple', 
+    'crossheads', 
+    'Crispy forms', 
+    'Crispy_bootstrap5', 
+    'users', 
+    'listings', 
+    'claims', 
+    'reviews', 
+    'notifications', 
+] 
+MIDDLEWARE = [ 
+    'Django. middleware. Security. Security Middleware', 
+    'White noise. middleware. White NoiseMiddleware', 
+    'Django. contrib. sessions. middleware. Session Middleware', 
+  
+    'Crossheads. middleware. Cores Middleware', 
+    'Django. Middleware. common. Common Middleware', 
+    'Django. Middle ware. scurf. Cerf View Middleware', 
+    'Django. contrib. auth. middleware. Authentication Middleware', 
+    'Django. contrib. messages. middleware. Message Middleware', 
+    'Django. middleware. click jacking. Frame Options Middleware', 
+] 
+ROOT_URLCONF      = 'configures' 
+AUTH_USER_MODEL   = 'users. Customer User' 
+LOGIN_URL         = '/users’/login/' 
+LOGIN_REDIRECT_URL= '/dashboard/' 
+LOGOUT_REDIRECT_URL = '/' 
+ 
+TEMPLATES = [ 
+    'BACKEND': 'Django. template. backends. Django. Django Templates', 
+    'DIRS': [BASE_DIR / 'templates'], 
+    'APP_DIRS': True, 
+    'OPTIONS’: 
+        'Context processors': [ 
+            'Django. template. Context processors. debug', 
+            'Django. Template. context processors. request', 
+            'Django. Contrib. auth. context _processors. Auth', 
+            'Django. Contrib. messages. context processors. messages, 
+        ], 
+    }, 
+}] 
+DATABASES = { 
+    'default’: 
+        'ENGINE': 'Django. db. backends.sqlite3', 
+        'NAME': BASE_DIR / 'db.sqlite3', 
+    } 
+  
+} 
+STATIC_URL = '/static/' 
+STATICFILES_DIRS = [BASE_DIR / 'static'] 
+STATIC_ROOT           = BASE_DIR / 'static files' 
+MEDIA_URL              = '/media/' 
+MEDIA_ROOT           = BASE_DIR / 'media' 
+DEFAULT_AUTO_FIELD = 'Django. db. Models. Beautified' 
+CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5' 
+CRISPY_TEMPLATE_PACK    = 'bootstrap5' 
+CORS_ALLOW_ALL_ORIGINS = True 
+LANGUAGE_CODE = 'en-us' 
+TIME_ZONE     = 'Asia/Kolkata' 
+USE_TZ        = True 
+config/urls.py 
+from Django. Contribute import admin 
+from Django. URLs import path, include 
+from Django. conf import settings 
+from Django. conf. URLs. static import static 
+from listings. Views import home view 
+URL patterns = [ 
+    path ('admin/', administers), 
+    path (home view, name='home'), 
+    path ('users/’, include ('users. URLs’), 
+    path ('listings/’, include ('listings. URLs’), 
+    path ('claims/’, include ('claims. URLs’), 
+    path ('reviews/’, include ('reviews. URLs’), 
+    path ('notifications/’, include ('notifications. URLs’), 
+    path ('dashboard/’, include ('users. dashboard URLs’), 
+] + static (settings. MEDIA_ URL, document root=settings. MEDIA_ ROOT) 
+``--- 
+  
+## requirements.txt 
+``` 
+Django==4.2.7 
+Django rest framework==3.14.0 
+Django rest framework-simple jwt==5.3.0 
+Pillow>=10.2.0 
+Django-cores-headers==4.3.1 
+python-decouple==3.8 
+Django-crispy-forms==2.1 
+crispy-bootstrap5==0.7 
+white noise==6.6.0
